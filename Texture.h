@@ -28,9 +28,4 @@ class Texture{
 	}
 };
 
-
-
-
-
-
 #endif
