@@ -63,13 +63,13 @@ GLuint TEX1;
 float xAngle = 0;
 float yAngle = 0;
 
-bool init() 
+bool init()
 {
 	glEnable(GL_DEPTH_TEST);
-	
-	SDR1=CreateShader("test.vert","test.frag");
-	SDR2=CreateShader("shd.vert","shd.frag");
-	
+
+	SDR1=CreateShader("shaders/main.vert","shaders/main.frag");
+	SDR2=CreateShader("shaders/light.vert","shaders/light.frag");
+
 	//VBO 1
 	glGenBuffers(1, &VBO1);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
@@ -86,7 +86,7 @@ bool init()
 	glEnableVertexAttribArray(modelPos);
 	glEnableVertexAttribArray(texPos);
 	glEnableVertexAttribArray(colPos);
-	
+	/*
 	//VBO 2
 	glGenBuffers(1, &VBO2);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO2);
@@ -103,20 +103,20 @@ bool init()
 	glEnableVertexAttribArray(modelPos);
 	glEnableVertexAttribArray(texPos);
 	glEnableVertexAttribArray(colPos);
-
+	*/
 	//unbind VAO & VBO
 	glBindBuffer(GL_ARRAY_BUFFER,0);
 	glBindVertexArray(0);
-	
+
 	//GEN textures
-	Texture tex1("earth.bmp");
+	Texture tex1("textures/earth.bmp");
 	glGenTextures(1, &TEX1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	
+
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
@@ -147,25 +147,25 @@ void idle(int value) {
 
 void display(void)
 {
-	
+
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	//to global
 	glm::mat4x4 identity(1.0f);
-	
-	
+
+
 	glm::mat4x4 view = cam.getView();
-		
+
 	glm::mat4x4 modl = identity *
 		glm::rotate(yAngle, glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-10.0f))*
 		glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
 	//вынести в инит
-	
+
 	glUseProgram(SDR1);
 	glBindVertexArray(VAO1);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
-	
+
 	GLuint modlLoc=glGetUniformLocation(SDR1,"modl");
 	GLuint viewLoc=glGetUniformLocation(SDR1,"view");
 	GLuint projLoc=glGetUniformLocation(SDR1,"proj");
@@ -176,30 +176,14 @@ void display(void)
 	glUniformMatrix4fv(modlLoc, 1, GL_FALSE, &modl[0][0]);
 	glUniform1f(timeLoc, time);
 	glUniform1i(glGetUniformLocation(SDR1,"sampler"), 0);
-	
+
 	glDrawElements(GL_QUADS, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
-	
-	glUseProgram(SDR2);
-	glBindVertexArray(VAO2);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-	
-	modl = identity * 
-		glm::rotate(xAngle, glm::vec3(1,1,1));
-	
-	modlLoc=glGetUniformLocation(SDR2,"modl");
-	viewLoc=glGetUniformLocation(SDR2,"view");
-	projLoc=glGetUniformLocation(SDR2,"proj");
-	timeLoc=glGetUniformLocation(SDR2,"time");
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-	glUniformMatrix4fv(projLoc, 1, GL_FALSE, &proj[0][0]);
-	glUniformMatrix4fv(modlLoc, 1, GL_FALSE, &modl[0][0]);
-	glUniform1f(timeLoc, time);
-	
+	glUniformMatrix4fv(modlLoc,1,GL_FALSE,&identity[0][0]);
 	glDrawElements(GL_QUADS, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
-	
-	glFlush(); 
+
+	glFlush();
 	glutSwapBuffers();
-	
+
 	//вычисление fps
 	fpsn++; //количество кадров
 	tEnd=omp_get_wtime();
@@ -308,7 +292,7 @@ int main(int argc, char **argv)
 	//idle?
 	glutTimerFunc(20,idle,0);
 	tStart=omp_get_wtime();
-	
+
 	glutMainLoop();
 
 	return 0;
