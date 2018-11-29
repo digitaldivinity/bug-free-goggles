@@ -1,6 +1,5 @@
 #ifndef KORCHAGIN_SHADER_LOADER
 #define KORCHAGIN_SHADER_LOADER
-#include <stdlib.h>
 
 //я изобретаю колесо, снова
 //и оно квадратное

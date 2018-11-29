@@ -3,7 +3,6 @@
 in vec3 modelPos;
 in vec2 texPos;
 in vec3 colorPos;
-
 out vec3 cubeVertex;
 out vec2 tex;
 uniform mat4 view;
