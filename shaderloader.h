@@ -1,6 +1,5 @@
 #ifndef KORCHAGIN_SHADER_LOADER
 #define KORCHAGIN_SHADER_LOADER
-
 //я изобретаю колесо, снова
 //и оно квадратное
 class ShaderLoader{
@@ -15,12 +14,13 @@ class ShaderLoader{
 		fclose(file);
 		long i=0;
 		src=new char[length+1];
-		fopen(path,"r");
+		file =fopen(path,"r");
 		while (i<length) {
 			src[i]=getc(file);
 			i++;
 		}
 		src[i]='\0';
+		fclose(file);
 	}
 	~ShaderLoader(){
 		delete [] src;

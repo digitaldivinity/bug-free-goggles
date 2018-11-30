@@ -19,32 +19,64 @@
 #include "camera.h"
 #include "Texture.h"
 using namespace std;
-//упаковка?
-struct Vertex
-{
-	float x, y, z;
-};
-
-
 
 GLfloat cube_vertices[] = {
-	-0.5f, -0.5f, -0.5f, 1, 0, 0, 0, 0,
-	-0.5f, 0.5f, -0.5f, 1, 0, 0, 1, 0,
-	0.5f, 0.5f, -0.5f, 1, 0, 0, 1, 1,
-	0.5f, -0.5f, -0.5f, 1, 0, 0, 0, 1,
-	-0.5f, -0.5f, 0.5f, 1, 0, 0, 0, 0,
-	-0.5f, 0.5f, 0.5f, 1, 0, 0, 0, 1,
-	0.5f, 0.5f, 0.5f, 1, 0, 0, 1, 1,
-	0.5f, -0.5f, 0.5f, 1, 0, 0, 1, 0
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 0,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 0,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 1,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 1,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 1,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 0,
+
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 0,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 0,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 1,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 1,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 1,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 0,
+
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 0,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 0,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 1,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 1,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 1,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 0,
+
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0, 0,
+     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1, 0,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1, 1,
+     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1, 1,
+     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0, 1,
+     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0, 0,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0, 0,
+     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1, 0,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1, 1,
+     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1, 1,
+    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0, 1,
+    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0, 0,
+
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0, 0,
+     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1, 0,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1, 1,
+     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1, 1,
+    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0, 1,
+    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0, 0
 };
 
 GLuint cube_indices[] = {
-	0,1,2,3,
-	4,5,6,7,
-	0,1,5,4,
-	1,2,6,5,
-	2,3,7,6,
-	3,0,4,7
+	0,1,2,
+	3,4,5,
+	6,7,8,
+	9,10,11,
+	12,13,14,
+	15,16,17,
+	18,19,20,
+	21,22,23,
+	24,25,26,
+	27,28,29,
+	30,31,32,
+	33,34,35
 };
 
 Camera cam(0.1,0.5);
@@ -54,7 +86,7 @@ double fps=0;
 int fpsn=0;
 double tEnd,tStart;
 
-GLuint VBO1,VBO2;
+GLuint VBO1,VBO2,lightSrcVAO;
 GLuint VAO1,VAO2;
 GLuint SDR1,SDR2;
 GLuint TEX1;
@@ -62,6 +94,17 @@ GLuint TEX1;
 
 float xAngle = 0;
 float yAngle = 0;
+
+
+glm::mat4x4 proj;
+glm::mat4x4 model;
+glm::mat4x4 view;
+glm::mat4x4 identity(1);
+
+glm::mat4x4 mvp;
+glm::mat4x4 mv;
+glm::mat3x3 nm;
+
 
 bool init()
 {
@@ -77,39 +120,34 @@ bool init()
 	//VAO 1
 	glGenVertexArrays(1, &VAO1);
 	glBindVertexArray(VAO1);
-	int modelPos = glGetAttribLocation(SDR1, "modelPos");
-	int texPos = glGetAttribLocation(SDR1,"texPos");
-	int colPos = glGetAttribLocation(SDR1,"colPos");
-	glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), 0);
+	int modelPos = glGetAttribLocation(SDR1, "position");
+	int texPos = glGetAttribLocation(SDR1,"texture");
+	int norPos = glGetAttribLocation(SDR1,"normal");
+	glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE,8 * sizeof(GLfloat), 0);
+	glVertexAttribPointer(norPos,3,GL_FLOAT,GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
 	glVertexAttribPointer(texPos, 2, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(6*sizeof(GLfloat)));
-	glVertexAttribPointer(colPos, 3, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
+	
 	glEnableVertexAttribArray(modelPos);
 	glEnableVertexAttribArray(texPos);
-	glEnableVertexAttribArray(colPos);
-	/*
-	//VBO 2
-	glGenBuffers(1, &VBO2);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO2);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_DYNAMIC_DRAW);
-	//VAO 2
-	glGenVertexArrays(1, &VAO2);
-	glBindVertexArray(VAO2);
-	modelPos = glGetAttribLocation(SDR2, "modelPos");
-	texPos = glGetAttribLocation(SDR2,"texPos");
-	colPos = glGetAttribLocation(SDR2,"colPos");
-	glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), 0);
-	glVertexAttribPointer(texPos, 2, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(6*sizeof(GLfloat)));
-	glVertexAttribPointer(colPos, 3, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
-	glEnableVertexAttribArray(modelPos);
-	glEnableVertexAttribArray(texPos);
-	glEnableVertexAttribArray(colPos);
-	*/
+	glEnableVertexAttribArray(norPos);
+	//lightsrcVAO
+	glGenVertexArrays(1,&lightSrcVAO);
+	glBindVertexArray(lightSrcVAO);
+	glBindBuffer(GL_ARRAY_BUFFER,VBO1);
+	glVertexAttribPointer(glGetAttribLocation(SDR2,"position"),
+		3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), 0);
+	glEnableVertexAttribArray(0);
+	
+	
+	
+	glBindVertexArray(0);
+	
 	//unbind VAO & VBO
 	glBindBuffer(GL_ARRAY_BUFFER,0);
 	glBindVertexArray(0);
 
 	//GEN textures
-	Texture tex1("textures/earth.bmp");
+	Texture tex1("textures/melon.bmp");
 	glGenTextures(1, &TEX1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
@@ -122,7 +160,6 @@ bool init()
 }
 
 
-glm::mat4x4 proj;
 
 void reshape(int w, int h)
 {
@@ -145,41 +182,43 @@ void idle(int value) {
 	glutTimerFunc(20,idle,0);
 }
 
+
 void display(void)
 {
-
+	GLuint mvpLoc,mvLoc,nmLoc;
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	//to global
-	glm::mat4x4 identity(1.0f);
-
-
-	glm::mat4x4 view = cam.getView();
-
-	glm::mat4x4 modl = identity *
-		glm::rotate(yAngle, glm::vec3(0.0f, 1.0f, 0.0f)) *
+	view=cam.getView();
+	
+	mvp = proj * view;
+	glUseProgram(SDR2);
+	glBindVertexArray(lightSrcVAO);
+	mvpLoc=glGetUniformLocation(SDR2,"mvp");
+	glUniformMatrix4fv(mvpLoc,1,GL_FALSE,&mvp[0][0]);
+	glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	
+	model = glm::rotate(yAngle, glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-10.0f))*
 		glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
-	//вынести в инит
-
+	mv=view*model;
+	nm = glm::transpose(glm::inverse(glm::mat3x3(model)));
+	mvp = proj * mv;
+	
 	glUseProgram(SDR1);
 	glBindVertexArray(VAO1);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
-
-	GLuint modlLoc=glGetUniformLocation(SDR1,"modl");
-	GLuint viewLoc=glGetUniformLocation(SDR1,"view");
-	GLuint projLoc=glGetUniformLocation(SDR1,"proj");
-	GLuint timeLoc=glGetUniformLocation(SDR1,"time");
-	GLfloat time = omp_get_wtime();
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
-	glUniformMatrix4fv(projLoc, 1, GL_FALSE, &proj[0][0]);
-	glUniformMatrix4fv(modlLoc, 1, GL_FALSE, &modl[0][0]);
-	glUniform1f(timeLoc, time);
+	mvpLoc=glGetUniformLocation(SDR1,"mvp");
+	mvLoc=glGetUniformLocation(SDR1,"mv");
+	nmLoc=glGetUniformLocation(SDR1,"nm");
+	GLuint mLoc=glGetUniformLocation(SDR1,"m");
+	GLuint camposLoc=glGetUniformLocation(SDR1,"camPosition");
+	glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvp[0][0]);
+	glUniformMatrix4fv(mvLoc, 1, GL_FALSE, &mv[0][0]);
+	glUniformMatrix3fv(nmLoc, 1, GL_FALSE, &nm[0][0]);
+	glUniformMatrix4fv(mLoc,1,GL_FALSE,&model[0][0]);
+	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
 	glUniform1i(glGetUniformLocation(SDR1,"sampler"), 0);
-
-	glDrawElements(GL_QUADS, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
-	glUniformMatrix4fv(modlLoc,1,GL_FALSE,&identity[0][0]);
-	glDrawElements(GL_QUADS, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	
 
 	glFlush();
 	glutSwapBuffers();

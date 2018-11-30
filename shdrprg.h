@@ -27,6 +27,7 @@ GLuint CreateShader(const char * vert, const char * frag){
 	glDeleteShader(fragment_shader);
 	char log[10000];
 	int log_len;
+	
 	glGetProgramInfoLog(program, sizeof(log) / sizeof(log[0]) - 1, &log_len, log);
 	log[log_len] = 0;
 	cout << "Shader from " << vert<< " and "<<frag<< " compile result:\n "<<log << endl;

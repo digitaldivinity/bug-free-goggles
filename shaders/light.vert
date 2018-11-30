@@ -1,13 +1,9 @@
 #version 330 core
 
-in vec3 modelPos;
-out vec3 cubeVertex;
-uniform mat4 view;
-uniform mat4 proj;
-uniform mat4 modl;
-//uniform float time;
+in vec3 position;
+
+uniform mat4 mvp;
 
 void main() {
-	cubeVertex = modelPos;
-	gl_Position = proj * view * modl * vec4(modelPos,1.0f);
+	gl_Position = mvp * vec4(position,1.0f);
 }
