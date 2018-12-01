@@ -18,6 +18,7 @@
 #include "shdrprg.h"
 #include "camera.h"
 #include "Texture.h"
+#include "objloader.h"
 using namespace std;
 
 GLfloat cube_vertices[] = {
@@ -63,7 +64,38 @@ GLfloat cube_vertices[] = {
     -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0, 1,
     -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0, 0
 };
+GLfloat cube_vertices2[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 0,
+     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 0,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 1,
+     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1, 1,
+    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 1,
+    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0, 0,
 
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 0,
+     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 0,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 1,
+     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  1, 1,
+    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 1,
+    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,  0, 0,
+
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 0,
+    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 0,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 1,
+    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1, 1,
+    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 1,
+    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0, 0
+};
+GLuint cube_indices2[] = {
+	0,1,2,
+	3,4,5,
+	6,7,8,
+	9,10,11,
+	12,13,14,
+	15,16,17
+
+};
+GLfloat stars[900];
 GLuint cube_indices[] = {
 	0,1,2,
 	3,4,5,
@@ -79,6 +111,10 @@ GLuint cube_indices[] = {
 	33,34,35
 };
 
+
+Model sortir("models/myshit.obj");
+
+
 Camera cam(0.1,0.5);
 GLuint Width=512,Height=512;
 double FPS=60;
@@ -90,6 +126,7 @@ GLuint VBO1,VBO2,lightSrcVAO;
 GLuint VAO1,VAO2;
 GLuint SDR1,SDR2;
 GLuint TEX1;
+GLuint starsVAO,starsVBO;
 //GLuint mvpLoc;
 
 float xAngle = 0;
@@ -105,21 +142,42 @@ glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
 
-
 bool init()
 {
+	//make stars
+	{
+		double a;
+		for (int i=0;i<900;i+=3){
+			stars[i]=rand()%500-250;
+			stars[i+1]=rand()%500-250;
+			stars[i+2]=rand()%500-250;
+			a=sqrt(pow(stars[i],2)+pow(stars[i+1],2)+pow(stars[i+2],2));
+			stars[i]=300*stars[i]/a;
+			stars[i+1]=300*stars[i+1]/a;
+			stars[i+2]=300*stars[i+2]/a;
+		}
+	}
+	GLfloat * ver = sortir.getVertices();
+	for (int i=0;i<1000;i+=8){
+		for (int j=0;j<8;j++)
+		printf("%f\t",ver[i+j]);
+		printf("\n");
+	}
 	glEnable(GL_DEPTH_TEST);
 
 	SDR1=CreateShader("shaders/main.vert","shaders/main.frag");
 	SDR2=CreateShader("shaders/light.vert","shaders/light.frag");
-
+	printf("%d %d\n",sizeof(cube_vertices),sizeof(sortir.getVertices()));
 	//VBO 1
 	glGenBuffers(1, &VBO1);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
 	//VAO 1
 	glGenVertexArrays(1, &VAO1);
 	glBindVertexArray(VAO1);
+	glGenBuffers(1,&VBO2);
+	glBindBuffer(GL_ARRAY_BUFFER,VBO2);
+	glBufferData(GL_ARRAY_BUFFER,5982*8*sizeof(GLfloat),sortir.getVertices(),GL_STATIC_DRAW);
 	int modelPos = glGetAttribLocation(SDR1, "position");
 	int texPos = glGetAttribLocation(SDR1,"texture");
 	int norPos = glGetAttribLocation(SDR1,"normal");
@@ -137,8 +195,15 @@ bool init()
 	glVertexAttribPointer(glGetAttribLocation(SDR2,"position"),
 		3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), 0);
 	glEnableVertexAttribArray(0);
-	
-	
+	//starsVAO
+	glGenVertexArrays(1,&starsVAO);
+	glBindVertexArray(starsVAO);
+	glGenBuffers(1,&starsVBO);
+	glBindBuffer(GL_ARRAY_BUFFER,starsVBO);
+	glBufferData(GL_ARRAY_BUFFER,sizeof(stars),stars,GL_STATIC_DRAW);
+	glVertexAttribPointer(glGetAttribLocation(SDR2,"position"),
+		3, GL_FLOAT, GL_FALSE, 0 , 0);
+	glEnableVertexAttribArray(0);
 	
 	glBindVertexArray(0);
 	
@@ -153,10 +218,12 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
-
+	
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
+	
 }
 
 
@@ -196,15 +263,22 @@ void display(void)
 	glUniformMatrix4fv(mvpLoc,1,GL_FALSE,&mvp[0][0]);
 	glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
 	
+	glBindVertexArray(starsVAO);
+	glUniformMatrix4fv(mvpLoc,1,GL_FALSE,&mvp[0][0]);
+	glDrawArrays(GL_POINTS,0,300);
+	
+	
 	model = glm::rotate(yAngle, glm::vec3(0.0f, 1.0f, 0.0f)) *
-		glm::translate(glm::vec3(0.0f,0.0f,-10.0f))*
-		glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
+		glm::translate(glm::vec3(0.0f,0.0f,-10.0f));
+		//glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
 	mv=view*model;
 	nm = glm::transpose(glm::inverse(glm::mat3x3(model)));
 	mvp = proj * mv;
 	
+	
 	glUseProgram(SDR1);
 	glBindVertexArray(VAO1);
+	//glBindBuffer(GL_ARRAY_BUFFER,VBO2);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
 	mvpLoc=glGetUniformLocation(SDR1,"mvp");
 	mvLoc=glGetUniformLocation(SDR1,"mv");
@@ -217,9 +291,11 @@ void display(void)
 	glUniformMatrix4fv(mLoc,1,GL_FALSE,&model[0][0]);
 	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
 	glUniform1i(glGetUniformLocation(SDR1,"sampler"), 0);
-	glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	//glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	glDrawArrays(GL_TRIANGLES,0,5982);
 	
-
+	
+	
 	glFlush();
 	glutSwapBuffers();
 

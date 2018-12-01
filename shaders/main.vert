@@ -22,6 +22,4 @@ void main() {
 	Texture=texture;
 	Normal=normal;
 	gl_Position = mvp * vec4(position,1);
-	//try obratyny
-	
 }
