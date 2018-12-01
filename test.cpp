@@ -112,7 +112,7 @@ GLuint cube_indices[] = {
 };
 
 
-Model sortir("models/myshit.obj");
+Model sortir("models/sortir.obj");
 
 
 Camera cam(0.1,0.5);
@@ -177,7 +177,7 @@ bool init()
 	glBindVertexArray(VAO1);
 	glGenBuffers(1,&VBO2);
 	glBindBuffer(GL_ARRAY_BUFFER,VBO2);
-	glBufferData(GL_ARRAY_BUFFER,5982*8*sizeof(GLfloat),sortir.getVertices(),GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER,sortir.getSize()*8*sizeof(GLfloat),sortir.getVertices(),GL_STATIC_DRAW);
 	int modelPos = glGetAttribLocation(SDR1, "position");
 	int texPos = glGetAttribLocation(SDR1,"texture");
 	int norPos = glGetAttribLocation(SDR1,"normal");
@@ -292,7 +292,7 @@ void display(void)
 	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
 	glUniform1i(glGetUniformLocation(SDR1,"sampler"), 0);
 	//glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
-	glDrawArrays(GL_TRIANGLES,0,5982);
+	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
 	
 	
 	

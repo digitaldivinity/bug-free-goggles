@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-GLfloat * loadOBJ(const char * path){
+GLfloat * loadOBJ(const char * path,GLuint * size){
 	
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector< glm::vec3 > temp_vertices;
@@ -66,16 +66,17 @@ GLfloat * loadOBJ(const char * path){
 	}
 	for( unsigned int i=0; i<uvIndices.size(); i++ ){
 		unsigned int uvIndex = uvIndices[i];
-		glm::vec3 vertex = temp_vertices[ uvIndex-1 ];
+		glm::vec2 vertex = temp_uvs[ uvIndex-1 ];
 		out_uvs.push_back(vertex);
 	}
 	for( unsigned int i=0; i<normalIndices.size(); i++ ){
 		unsigned int normalIndex = normalIndices[i];
-		glm::vec3 vertex = temp_vertices[ normalIndex-1 ];
+		glm::vec3 vertex = temp_normals[ normalIndex-1 ];
 		out_normals.push_back(vertex);
 	}
 	printf("v = %d\nn=%d\nt=%d\n",out_vertices.size(),out_normals.size(),out_uvs.size());
 	GLfloat * vertices=new GLfloat[out_vertices.size()*8];
+	(*size)=out_vertices.size();
 	printf("sizeof vertices %d\n",out_vertices.size());
 	for (unsigned int i=0;i<out_vertices.size();i++){
 		vertices[i*8]=out_vertices[i].x;
@@ -106,17 +107,19 @@ GLfloat * loadOBJ(const char * path){
 
 class Model{
 	GLfloat * vertices;
-	long size;
+	GLuint size;
 	public:
 	Model(const char * path){
-		vertices=loadOBJ(path);
-		size=sizeof(vertices);
+		vertices=loadOBJ(path,&size);
 	}
 	~Model(){
 		delete [] vertices;
 	}
 	GLfloat * getVertices(){
 		return vertices;
+	}
+	GLuint getSize(){
+		return size;
 	}
 };
 #endif
