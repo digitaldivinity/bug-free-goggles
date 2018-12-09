@@ -16,6 +16,7 @@ uniform mat3 nm;
 uniform mat4 m;
 uniform vec4 LightPosition=vec4(0,0,0,1);
 uniform sampler2D sampler;
+uniform sampler2D depthMap;
 
 struct Material{
 	vec3 ambient;
@@ -31,6 +32,15 @@ struct Light{
 };
 uniform Light light={vec3(1,1,1),vec3(1,1,1),vec3(1,1,1)};
 
+float ShadowCalculation(vec3 fragPosLightSpace){
+	vec3 projCoords = fragPosLightSpace.xyz;
+	projCoords=projCoords*0.5+0.5;
+	float closestDepth=texture(depthMap,projCoords.xy).r;
+	float currentDepth=projCoords.z;
+	float shadow = currentDepth> closestDepth ? 1.0 : 0.0;
+	return shadow;
+}
+
 void main()
 {
 	vec3 p = vec3(m* vec4(Position,1));
@@ -43,5 +53,7 @@ void main()
 	vec3 ambient=light.ambient*material.ambient;
 	vec3 diffuse=light.diffuse*(DiffStr*material.diffuse);
 	vec3 specular = light.specular*(SpecStr*material.specular);
-	color = vec4(ambient+diffuse+specular,1);//*texture(sampler,Texture);
+	//color = vec4(ambient+diffuse+specular,1);
+	float shadow = ShadowCalculation(Position);
+	color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
 }

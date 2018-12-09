@@ -113,25 +113,54 @@ GLuint cube_indices[] = {
 
 
 Model sortir("models/sortir.obj");
-
+Model sphere("models/sphere.obj");
 
 Camera cam(0.1,0.5);
 GLuint Width=512,Height=512;
-double FPS=60;
-double fps=0;
-int fpsn=0;
-double tEnd,tStart;
 
 GLuint VBO1,VBO2,lightSrcVAO;
 GLuint VAO1,VAO2;
-GLuint SDR1,SDR2;
+GLuint SDR1,SDR2,DepthSDR;
 GLuint TEX1;
 GLuint starsVAO,starsVBO;
+GLuint depthMapFBO;
+GLuint depthMap;
+GLuint depthVAO;
+GLuint SHADOW_WIDTH=1024,SHADOW_HEIGHT=1024;
 //GLuint mvpLoc;
 
 float xAngle = 0;
 float yAngle = 0;
 
+class FPScounter{
+	int frames;
+	double FPS;
+	double time;
+	double tStart;
+	double tEnd;
+	public:
+	FPScounter(){
+		frames=0;
+		time=0;
+		FPS=60;
+	}
+	void Calculate(){
+		tEnd=omp_get_wtime();
+		frames++;
+		time+=tEnd-tStart;
+		if (time>1) {
+			printf("FPS = %d\n",frames);
+			time=0;
+			frames=0;
+		}
+		tStart=omp_get_wtime();
+	}
+	void Start(){
+		tStart=omp_get_wtime();
+	}
+};
+
+FPScounter FPS;
 
 glm::mat4x4 proj;
 glm::mat4x4 model;
@@ -167,11 +196,12 @@ bool init()
 
 	SDR1=CreateShader("shaders/main.vert","shaders/main.frag");
 	SDR2=CreateShader("shaders/light.vert","shaders/light.frag");
+	DepthSDR=CreateShader("shaders/depth.vert","shaders/depth.frag");
 	printf("%d %d\n",sizeof(cube_vertices),sizeof(sortir.getVertices()));
 	//VBO 1
 	glGenBuffers(1, &VBO1);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO1);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sphere.getSize()*8*sizeof(GLfloat), sphere.getVertices(), GL_STATIC_DRAW);
 	//VAO 1
 	glGenVertexArrays(1, &VAO1);
 	glBindVertexArray(VAO1);
@@ -194,6 +224,13 @@ bool init()
 	glBindBuffer(GL_ARRAY_BUFFER,VBO1);
 	glVertexAttribPointer(glGetAttribLocation(SDR2,"position"),
 		3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), 0);
+	glEnableVertexAttribArray(0);
+	//depthVAO
+	glGenVertexArrays(1,&depthVAO);
+	glBindVertexArray(depthVAO);
+	glBindBuffer(GL_ARRAY_BUFFER,VBO2);
+	glVertexAttribPointer(glGetAttribLocation(DepthSDR,"position"),
+		3,GL_FLOAT,GL_FALSE,8*sizeof(GLfloat),0);
 	glEnableVertexAttribArray(0);
 	//starsVAO
 	glGenVertexArrays(1,&starsVAO);
@@ -222,7 +259,22 @@ bool init()
 
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 	
+	//буффер для карты глубины
+	glGenFramebuffers(1, &depthMapFBO);
+	glBindTexture(GL_TEXTURE_2D,depthMap);
+	glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,SHADOW_WIDTH,SHADOW_HEIGHT,0,GL_DEPTH_COMPONENT,GL_FLOAT,NULL);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D,depthMap,0);
+	glDrawBuffer(GL_NONE);
+	glDrawBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	
 }
 
@@ -252,6 +304,25 @@ void idle(int value) {
 
 void display(void)
 {
+	//не работает
+	glViewport(0,0,SHADOW_WIDTH,SHADOW_HEIGHT);
+	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	
+	proj=glm::perspective(45.0f,(float)SHADOW_WIDTH/SHADOW_HEIGHT,1.0f,500.0f);
+	view=glm::lookAt(glm::vec3(0,0,0),glm::vec3(1,0,0),glm::vec3(0,1,0));
+	mvp=proj*view;
+	glUseProgram(DepthSDR);
+	glBindVertexArray(depthVAO);
+	glUniformMatrix4fv(glGetUniformLocation(DepthSDR,"lightSpaceMatrix"),1,GL_FALSE,&mvp[0][0]);
+	glUniformMatrix4fv(glGetUniformLocation(DepthSDR,"model"),1,GL_FALSE,&identity[0][0]);
+	
+	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
+	
+	glBindFramebuffer(GL_FRAMEBUFFER,0);
+	
+	glViewport(0,0,Width,Height);
+	proj=glm::perspective(45.0f,(float)Width/Height,1.0f,500.0f);
 	GLuint mvpLoc,mvLoc,nmLoc;
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	view=cam.getView();
@@ -261,7 +332,8 @@ void display(void)
 	glBindVertexArray(lightSrcVAO);
 	mvpLoc=glGetUniformLocation(SDR2,"mvp");
 	glUniformMatrix4fv(mvpLoc,1,GL_FALSE,&mvp[0][0]);
-	glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
+	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
+	//glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
 	
 	glBindVertexArray(starsVAO);
 	glUniformMatrix4fv(mvpLoc,1,GL_FALSE,&mvp[0][0]);
@@ -270,7 +342,7 @@ void display(void)
 	
 	model = glm::rotate(yAngle, glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-10.0f));
-		//glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
+	//	glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
 	mv=view*model;
 	nm = glm::transpose(glm::inverse(glm::mat3x3(model)));
 	mvp = proj * mv;
@@ -285,32 +357,23 @@ void display(void)
 	nmLoc=glGetUniformLocation(SDR1,"nm");
 	GLuint mLoc=glGetUniformLocation(SDR1,"m");
 	GLuint camposLoc=glGetUniformLocation(SDR1,"camPosition");
+	GLuint depthMapLoc=glGetUniformLocation(SDR1,"depthMap");
 	glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvp[0][0]);
 	glUniformMatrix4fv(mvLoc, 1, GL_FALSE, &mv[0][0]);
 	glUniformMatrix3fv(nmLoc, 1, GL_FALSE, &nm[0][0]);
 	glUniformMatrix4fv(mLoc,1,GL_FALSE,&model[0][0]);
 	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
-	glUniform1i(glGetUniformLocation(SDR1,"sampler"), 0);
+	//glUniform1i(depthMapLoc,0);
+	glBindTexture(GL_TEXTURE_2D,depthMap);
+	glUniform1i(glGetUniformLocation(SDR1,"depthMap"), 0);
 	//glDrawElements(GL_TRIANGLES, sizeof(cube_indices) / sizeof(cube_indices[0]), GL_UNSIGNED_INT, cube_indices);
 	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
-	
-	
 	
 	glFlush();
 	glutSwapBuffers();
 
 	//вычисление fps
-	fpsn++; //количество кадров
-	tEnd=omp_get_wtime();
-	FPS=tEnd-tStart;
-	fps+=FPS;
-	if (fps>1) {
-		printf("FPS = %d\n",fpsn);
-		fps=0;
-		fpsn=0;
-	}
-	FPS=1/FPS;
-	tStart=omp_get_wtime();
+	FPS.Calculate();
 }
 
 
@@ -361,6 +424,10 @@ void KeyUp(unsigned char key, int x, int y){
 		case 'd':
 			cam.gr=false;
 			break;
+		case 'k':
+			printf("Exit\n");
+			glutLeaveMainLoop();
+			printf("Exit\n");
 		}
 }
 
@@ -406,8 +473,7 @@ int main(int argc, char **argv)
 	glutMotionFunc(MouseMove);
 	//idle?
 	glutTimerFunc(20,idle,0);
-	tStart=omp_get_wtime();
-
+	FPS.Start();
 	glutMainLoop();
 
 	return 0;
