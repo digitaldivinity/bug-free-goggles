@@ -1,5 +1,7 @@
-#ifndef KORCHAGIN_OBJLOADER
-#define KORCHAGIN_OBJLOADER
+#ifndef KORCHAGIN_MODEL
+#define KORCHAGIN_MODEL
+#include <GL/glew.h>
+#include <GL/freeglut.h>
 #include <glm/glm.hpp>
 #include <stdlib.h>
 #include <string.h>
@@ -108,18 +110,63 @@ GLfloat * loadOBJ(const char * path,GLuint * size){
 class Model{
 	GLfloat * vertices;
 	GLuint size;
+	GLuint VBO;
 	public:
 	Model(const char * path){
 		vertices=loadOBJ(path,&size);
 	}
 	~Model(){
-		delete [] vertices;
-	}
-	GLfloat * getVertices(){
-		return vertices;
+		if (vertices!=NULL)	delete [] vertices;
 	}
 	GLuint getSize(){
 		return size;
+	}
+	void InitVBO(){
+		glGenBuffers(1,&VBO);
+		glBindBuffer(GL_ARRAY_BUFFER,VBO);
+		glBufferData(GL_ARRAY_BUFFER,size*8*sizeof(GLfloat),vertices,GL_STATIC_DRAW);
+		delete [] vertices;
+		vertices=NULL;
+	}
+	//создаем VAO с VBO и возвращаем id VAO
+	GLuint CreateArrays(GLuint shader){
+		if (vertices!=NULL) this->InitVBO();
+		GLuint VAO; 
+		glGenVertexArrays(1,&VAO);
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER,VBO);
+		GLuint modelPos = glGetAttribLocation(shader, "position");
+		GLuint texPos = glGetAttribLocation(shader,"texture");
+		GLuint norPos = glGetAttribLocation(shader,"normal");
+		glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE,8 * sizeof(GLfloat), 0);
+		glVertexAttribPointer(norPos,3,GL_FLOAT,GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
+		glVertexAttribPointer(texPos, 2, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(6*sizeof(GLfloat)));
+		glEnableVertexAttribArray(modelPos);
+		glEnableVertexAttribArray(texPos);
+		glEnableVertexAttribArray(norPos);
+		glBindVertexArray(0);
+		return VAO;
+	}
+	static GLuint CreateExternalArrays(GLuint shader,GLfloat * vertices,GLfloat size){
+		//здесь возможно дублирование вбо
+		//если нужно можно сделать возврат его через параметр + умолчание
+		GLuint VAO,VBO;
+		glGenVertexArrays(1,&VAO);
+		glBindVertexArray(VAO);
+		glGenBuffers(1,&VBO);
+		glBindBuffer(GL_ARRAY_BUFFER,VBO);
+		glBufferData(GL_ARRAY_BUFFER,size*8*sizeof(GLfloat),vertices,GL_STATIC_DRAW);
+		GLuint modelPos = glGetAttribLocation(shader, "position");
+		GLuint texPos = glGetAttribLocation(shader,"texture");
+		GLuint norPos = glGetAttribLocation(shader,"normal");
+		glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE,8 * sizeof(GLfloat), 0);
+		glVertexAttribPointer(norPos,3,GL_FLOAT,GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(3*sizeof(GLfloat)));
+		glVertexAttribPointer(texPos, 2, GL_FLOAT, GL_FALSE, 8*sizeof(GLfloat), (GLvoid*)(6*sizeof(GLfloat)));
+		glEnableVertexAttribArray(modelPos);
+		glEnableVertexAttribArray(texPos);
+		glEnableVertexAttribArray(norPos);
+		glBindVertexArray(0);
+		return VAO;
 	}
 };
 #endif

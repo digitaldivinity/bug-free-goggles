@@ -9,14 +9,17 @@ in vec3 Position;
 
 out vec4 color;
 
-//uniform mat4 mvp;
-//uniform mat4 mv;
+//blinn-fong model
 uniform vec3 camPosition;
 uniform mat3 nm;
 uniform mat4 m;
 uniform vec4 LightPosition=vec4(0,0,0,1);
 uniform sampler2D sampler;
+
+//shadow mapping
 uniform sampler2D depthMap;
+uniform mat4 LightSpace;
+in vec4 FragPosLightSpace;
 
 struct Material{
 	vec3 ambient;
@@ -32,12 +35,16 @@ struct Light{
 };
 uniform Light light={vec3(1,1,1),vec3(1,1,1),vec3(1,1,1)};
 
-float ShadowCalculation(vec3 fragPosLightSpace){
-	vec3 projCoords = fragPosLightSpace.xyz;
+float ShadowCalculation(vec4 fragPosLightSpace){
+	vec3 projCoords = fragPosLightSpace.xyz/fragPosLightSpace.w;
+	//приведение к интервалу [0,1]
 	projCoords=projCoords*0.5+0.5;
 	float closestDepth=texture(depthMap,projCoords.xy).r;
 	float currentDepth=projCoords.z;
-	float shadow = currentDepth> closestDepth ? 1.0 : 0.0;
+	//float bias=0.005;
+	float bias=min(0.05*(1-dot(Normal,vec3(0,0,1))),0.005);
+	float shadow = currentDepth -bias> closestDepth ? 1.0 : 0.0;
+	
 	return shadow;
 }
 
@@ -54,6 +61,6 @@ void main()
 	vec3 diffuse=light.diffuse*(DiffStr*material.diffuse);
 	vec3 specular = light.specular*(SpecStr*material.specular);
 	//color = vec4(ambient+diffuse+specular,1);
-	float shadow = ShadowCalculation(Position);
+	float shadow = ShadowCalculation(FragPosLightSpace);
 	color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
 }
