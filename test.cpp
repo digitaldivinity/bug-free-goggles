@@ -125,7 +125,7 @@ GLfloat stars[900];
 
 
 Model sortir("models/myshit.obj");
-Model sphere("models/sphere.obj");
+Model sphere("models/cube.obj");
 
 Camera cam(0.1,0.5);
 GLuint Width=512,Height=512;
@@ -278,7 +278,6 @@ void display(void)
 	LightSpace=proj*view;
 	glUseProgram(DepthSDR);
 	glBindVertexArray(depthVAO);
-	//glBindBuffer(GL_VERTEX_ARRAY,VBO
 	//можно сразу mvp
 	glUniformMatrix4fv(glGetUniformLocation(DepthSDR,"LightSpace"),1,GL_FALSE,&mvp[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
