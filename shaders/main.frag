@@ -17,9 +17,10 @@ uniform vec4 LightPosition=vec4(0,0,0,1);
 uniform sampler2D sampler;
 
 //shadow mapping
-uniform sampler2D depthMap;
-uniform mat4 LightSpace;
-in vec4 FragPosLightSpace;
+uniform samplerCube depthMap;
+uniform float farPlane=500;
+//uniform mat4 LightSpace;
+//in vec4 FragPosLightSpace;
 
 struct Material{
 	vec3 ambient;
@@ -35,35 +36,42 @@ struct Light{
 };
 uniform Light light={vec3(1,1,1),vec3(1,1,1),vec3(1,1,1)};
 
-float ShadowCalculation(vec4 fragPosLightSpace){
-	vec3 projCoords = fragPosLightSpace.xyz/fragPosLightSpace.w;
-	//приведение к интервалу [0,1]
-	projCoords=projCoords*0.5+0.5;
-	//float closestDepth=texture(depthMap,projCoords.xy).r;
-	float currentDepth=projCoords.z;
-	//float bias=0.005;
-	float bias=min(0.05*(1-dot(Normal,vec3(0,0,1))),0.005);
-	float shadow = 0.0;
-	vec2 texelSize = 1.0 / textureSize(depthMap, 0);
-	for(int x = -2; x <= 2; ++x)
-	{
-		for(int y = -2; y <= 2; ++y)
-		{
-			float pcfDepth = texture(depthMap, projCoords.xy + vec2(x, y) * texelSize).r;
-			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-		}
-	}
-	shadow /= 25;
-	//shadow = currentDepth -bias> closestDepth ? 1.0 : 0.0;
+vec3 sampleOffsetDirections[20] = vec3[]
+(
+   vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
+   vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+   vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+   vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+   vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+);   
+float ShadowCalculation(vec3 FragPos){
+	vec3 fragToLight = FragPos-vec3(0,0,0);
+	float closestDepth=texture(depthMap,fragToLight).r;
+	closestDepth*=farPlane;
+	float currentDepth = length(fragToLight);
 	
+	float shadow = 0.0;
+	float bias = 0.15;
+	int samples = 20;
+	float viewDistance = length(camPosition - FragPos);
+	float diskRadius = 0.05;
+	for(int i = 0; i < samples; ++i)
+	{
+		float closestDepth = texture(depthMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
+		closestDepth *= farPlane;   // Undo mapping [0;1]
+		if(currentDepth - bias > closestDepth)
+			shadow += 1.0;
+	}
+	shadow /= float(samples); 
+	if (shadow>1.0) shadow=1.0;
 	return shadow;
 }
 
 void main()
 {
-	vec3 p = vec3(m* vec4(Position,1));
+	vec3 p = Position;
 	vec3 l=normalize(vec3(LightPosition)-p);
-	vec3 n=normalize(nm*Normal);
+	vec3 n=normalize(Normal);
 	vec3 v=normalize(camPosition-p);
 	vec3 r= reflect(-v,n);
 	float DiffStr=max(dot(n,l),0);
@@ -71,7 +79,6 @@ void main()
 	vec3 ambient=light.ambient*material.ambient;
 	vec3 diffuse=light.diffuse*(DiffStr*material.diffuse);
 	vec3 specular = light.specular*(SpecStr*material.specular);
-	//color = vec4(ambient+diffuse+specular,1);
-	float shadow = ShadowCalculation(FragPosLightSpace);
+	float shadow = ShadowCalculation(Position);
 	color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
 }
