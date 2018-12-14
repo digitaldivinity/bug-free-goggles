@@ -13,8 +13,8 @@ out vec4 color;
 uniform vec3 camPosition;
 uniform mat3 nm;
 uniform mat4 m;
-uniform vec4 LightPosition=vec4(0,0,0,1);
-uniform sampler2D sampler;
+uniform vec3 LightPosition;
+uniform sampler2D normalMap;
 
 //shadow mapping
 uniform samplerCube depthMap;
@@ -28,7 +28,7 @@ struct Material{
 	vec3 specular;
 	float shininess;
 };
-uniform Material material={vec3(0.2,0.2,0.2),vec3(0.7,0.7,0.7),vec3(1,1,1),200};
+uniform Material material={vec3(0.1,0.1,0.1),vec3(0.7,0.7,0.7),vec3(1,1,1),200};
 struct Light{
 	vec3 ambient;
 	vec3 diffuse;
@@ -45,7 +45,7 @@ vec3 sampleOffsetDirections[20] = vec3[]
    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 );   
 float ShadowCalculation(vec3 FragPos){
-	vec3 fragToLight = FragPos-vec3(0,0,0);
+	vec3 fragToLight = FragPos-LightPosition;
 	float closestDepth=texture(depthMap,fragToLight).r;
 	closestDepth*=farPlane;
 	float currentDepth = length(fragToLight);
@@ -67,11 +67,17 @@ float ShadowCalculation(vec3 FragPos){
 	return shadow;
 }
 
+
 void main()
 {
+	//
+	vec3 deltaVec=vec3(0,0,1)-normalize(texture(normalMap,Texture).rgb*2-1);
+	vec3 n = normalize(Normal-nm*deltaVec);
+	//
 	vec3 p = Position;
-	vec3 l=normalize(vec3(LightPosition)-p);
-	vec3 n=normalize(Normal);
+	vec3 l=normalize(LightPosition-p);
+	//vec3 n=normalize(Normal);
+	//vec3 n =normalize(normalize(texture(normalMap, Texture).rgb));
 	vec3 v=normalize(camPosition-p);
 	vec3 r= reflect(-v,n);
 	float DiffStr=max(dot(n,l),0);
@@ -81,4 +87,8 @@ void main()
 	vec3 specular = light.specular*(SpecStr*material.specular);
 	float shadow = ShadowCalculation(Position);
 	color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
+	//if (dot(Normal,l)>=0) color=vec4(1,0,0,1); else color = vec4(0,1,0,1);
+	//color = vec4(n,1);
+	//color = vec4(l,1);
+	//color= vec4(n,1);
 }

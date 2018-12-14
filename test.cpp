@@ -34,7 +34,7 @@ GLfloat flat_vertices[]={
 GLfloat stars[900];
 
 
-Model sortir("models/myshit.obj");
+Model sortir("models/lowPoly.obj");
 Model sphere("models/sphere.obj");
 
 Camera cam(0.1,0.5);
@@ -61,7 +61,7 @@ glm::mat4x4 model;
 glm::mat4x4 view;
 glm::mat4x4 identity(1);
 glm::mat4x4 LightSpace;
-
+glm::vec3 light(0,0,0);
 glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
@@ -112,7 +112,7 @@ bool init()
 	glBindVertexArray(0);
 
 	//GEN textures
-	Texture tex1("textures/melon.bmp");
+	Texture tex1("textures/nm_brick.jpg");
 	glGenTextures(1, &TEX1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
@@ -202,27 +202,26 @@ void display(void)
 	GLfloat far=500;
 	proj=glm::perspective(glm::radians(90.0f),(float)SHADOW_WIDTH/SHADOW_HEIGHT,1.0f,500.0f);
 	//vp матрицы
-	glm::vec3 lightPos=glm::vec3(0,0,0);
-	shadowTransforms[0]=proj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
-	shadowTransforms[1]=proj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
-	shadowTransforms[2]=proj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
-	shadowTransforms[3]=proj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
-	shadowTransforms[4]=proj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
-	shadowTransforms[5]=proj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
+	shadowTransforms[0]=proj * glm::lookAt(light, light + glm::vec3( 1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+	shadowTransforms[1]=proj * glm::lookAt(light, light + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0,-1.0, 0.0));
+	shadowTransforms[2]=proj * glm::lookAt(light, light + glm::vec3( 0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+	shadowTransforms[3]=proj * glm::lookAt(light, light + glm::vec3( 0.0,-1.0, 0.0), glm::vec3(0.0, 0.0,-1.0));
+	shadowTransforms[4]=proj * glm::lookAt(light, light + glm::vec3( 0.0, 0.0, 1.0), glm::vec3(0.0,-1.0, 0.0));
+	shadowTransforms[5]=proj * glm::lookAt(light, light + glm::vec3( 0.0, 0.0,-1.0), glm::vec3(0.0,-1.0, 0.0));
 
 	glUseProgram(ShaderDepth);
 	glBindVertexArray(depthVAO);
 	
 	model = glm::rotate(glm::radians(yAngle), glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-10.0f))*
-		glm::rotate(xAngle,glm::vec3(1,0,0));
+		glm::rotate(glm::radians(xAngle),glm::vec3(1,0,0));
 	for (int i=0;i<6;i++){
 		char buf[]="shadowMatrices[0]";
 		buf[15]=i+'0';
 		glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,buf),1,GL_FALSE,&((shadowTransforms[i])[0][0]));
 	}
 	glUniform1f(glGetUniformLocation(ShaderDepth,"far_plane"),far);
-	glUniform3f(glGetUniformLocation(ShaderDepth,"LightPos"),0,0,0);
+	glUniform3f(glGetUniformLocation(ShaderDepth,"LightPosition"),light.x,light.y,light.z);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
 	model = glm::rotate(glm::radians(-yAngle), glm::vec3(0.0f, 1.0f, 0.0f)) *
@@ -248,7 +247,6 @@ void display(void)
 	model = glm::rotate(glm::radians(yAngle), glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-10.0f))*
 		glm::rotate(glm::radians(xAngle),glm::vec3(1,0,0));
-	//	glm::rotate(yAngle, glm::vec3(1.0f,0.0f,1.0f));
 	mv=view*model;
 	nm = glm::transpose(glm::inverse(glm::mat3x3(model)));
 	mvp = proj * mv;
@@ -260,6 +258,9 @@ void display(void)
 	nmLoc=glGetUniformLocation(ShaderMain,"nm");
 	GLuint mLoc=glGetUniformLocation(ShaderMain,"m");
 	GLuint camposLoc=glGetUniformLocation(ShaderMain,"camPosition");
+	glUniform3f(glGetUniformLocation(ShaderDepth,"LightPosition"),light.x,light.y,light.z);
+	glActiveTexture(GL_TEXTURE0);//
+	glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap);//
 	GLuint depthMapLoc=glGetUniformLocation(ShaderMain,"depthMap");
 	glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvp[0][0]);
 	glUniformMatrix4fv(mvLoc, 1, GL_FALSE, &mv[0][0]);
@@ -292,11 +293,15 @@ void display(void)
 	glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvp[0][0]);
 	nm = glm::transpose(glm::inverse(glm::mat3x3(model)));
 	glUniformMatrix3fv(nmLoc, 1, GL_FALSE, &nm[0][0]);
+	glActiveTexture(GL_TEXTURE1);//
+	glBindTexture(GL_TEXTURE_2D,TEX1);// 
+	glUniform1i(glGetUniformLocation(ShaderMain,"normalMap"), 1);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	
 	
 	//сфера в центре
-	mvp=proj*view;
+	model=glm::translate(light);
+	mvp=proj*view*model;
 	glUseProgram(ShaderLightSource);
 	glBindVertexArray(VAOLightSource);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderLightSource,"mvp"),1,GL_FALSE,&mvp[0][0]);
@@ -344,10 +349,22 @@ void KeyDown(unsigned char key, int x, int y){
 			rotSpeed-=1;
 			break;
 		case 'i':
-			xAngle+=1;
+			light.x+=1;
 			break;
 		case 'k':
-			xAngle-=1;
+			light.x-=1;
+			break;
+		case 'j':
+			light.y+=1;
+			break;
+		case 'l':
+			light.y-=1;
+			break;
+		case 'u':
+			light.z+=1;
+			break;
+		case 'o':
+			light.z-=1;
 			break;
 	}
 }
