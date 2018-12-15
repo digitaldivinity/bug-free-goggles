@@ -23,12 +23,12 @@
 using namespace std;
 
 GLfloat flat_vertices[]={
-	0,0,0,0,1,0,0,0,
-	1,0,0,0,1,0,1,0,
-	0,1,0,0,1,0,0,1,
+	-1,1,0,0,1,0,0,1,
+	-1,-1,0,0,1,0,0,0,
+	1,-1,0,0,1,0,1,0,
 	
-	0,1,0,0,1,0,0,1,
-	1,0,0,0,1,0,1,0,
+	-1,1,0,0,1,0,0,1,
+	1,-1,0,0,1,0,1,0,
 	1,1,0,0,1,0,1,1
 };
 GLfloat stars[900];
@@ -49,7 +49,9 @@ GLuint depthMapFBO;
 GLuint depthMap;
 GLuint depthVAO,depthVAO2;
 GLuint SHADOW_WIDTH=1024,SHADOW_HEIGHT=1024;
+GLuint PostMap,PostFBO,COLOR_WIDTH=2048,COLOR_HEIGHT=2048,ShaderPost,VAOPost;
 //GLuint mvpLoc;
+GLuint Effect=0;
 
 float xAngle = 0;
 float yAngle = 0;
@@ -89,6 +91,7 @@ bool init()
 	ShaderLightSource=CreateShader("shaders/light.vert","shaders/light.frag");
 	ShaderDepth=CreateShader("shaders/depth.vert","shaders/depth.frag","shaders/depth.geom");
 	ShaderTest=CreateShader("shaders/test.vert","shaders/test.frag");
+	ShaderPost=CreateShader("shaders/post.vert","shaders/post.frag");
 	
 	//generating VAO
 	VAO1=sortir.CreateArrays(ShaderMain);
@@ -96,7 +99,7 @@ bool init()
 	VAOLightSource=sphere.CreateArrays(ShaderLightSource);
 	depthVAO=sortir.CreateArrays(ShaderDepth);
 	depthVAO2=sphere.CreateArrays(ShaderDepth);
-	TestVAO=Model::CreateExternalArrays(ShaderTest,flat_vertices,6);	
+	VAOPost=Model::CreateExternalArrays(ShaderPost,flat_vertices,6);
 	
 	//starsVAO
 	glGenVertexArrays(1,&starsVAO);
@@ -130,37 +133,40 @@ bool init()
 	glGenFramebuffers(1, &depthMapFBO);
 	glGenTextures(1, &depthMap);
 	glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap);
-	/*
-	glTexImage2D(GL_TEXTURE_2D,0,GL_DEPTH_COMPONENT,SHADOW_WIDTH,SHADOW_HEIGHT,0,GL_DEPTH_COMPONENT,GL_FLOAT,NULL);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
-	*/
 	for (int i =0;i<6;i++){
 		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X+i,0,GL_DEPTH_COMPONENT,SHADOW_WIDTH,SHADOW_HEIGHT,0,GL_DEPTH_COMPONENT,GL_FLOAT,NULL);
 		
 	}
 	glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 
+	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 
 	
 	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
 	glFramebufferTexture(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,depthMap,0);
 	glDrawBuffer(GL_NONE);
 	glDrawBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
-	
-	
-	/*
-	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_TEXTURE_2D,depthMap,0);
-	glDrawBuffer(GL_NONE);
-	glDrawBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER,0);
-	*/
+	//буффер для постэффектов
+	GLuint depthPostMap;
+    glGenFramebuffers(1, &PostFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, PostFBO);
+    // create a color attachment texture
+    glGenTextures(1, &PostMap);
+    glBindTexture(GL_TEXTURE_2D, PostMap);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, COLOR_WIDTH, COLOR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, PostMap, 0);
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, COLOR_WIDTH, COLOR_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+    glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_MULTISAMPLE); 
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 
@@ -230,11 +236,13 @@ void display(void)
 	glBindVertexArray(depthVAO2);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
-	glBindFramebuffer(GL_FRAMEBUFFER,0);
+	//glBindFramebuffer(GL_FRAMEBUFFER,0);//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	glCullFace(GL_BACK);
 	
 	//рендер сцены
-	glViewport(0,0,Width,Height);
+	//glViewport(0,0,Width,Height);
+	glViewport(0,0,COLOR_WIDTH,COLOR_HEIGHT);//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	glBindFramebuffer(GL_FRAMEBUFFER,PostFBO);
 	proj=glm::perspective(glm::radians(45.0f),(float)Width/Height,1.0f,500.0f);
 	
 	GLuint mvpLoc,mvLoc,nmLoc;
@@ -308,8 +316,26 @@ void display(void)
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	//звезды
 	glBindVertexArray(starsVAO);
+	mvp=proj*view;
+	glUniformMatrix4fv(glGetUniformLocation(ShaderLightSource,"mvp"),1,GL_FALSE,&mvp[0][0]);
+	glPointSize(2);
 	glDrawArrays(GL_POINTS,0,300);
 	
+	
+	//рендер из текстуры на экран
+	glBindFramebuffer(GL_FRAMEBUFFER,0);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glViewport(0,0,Width,Height);
+	//glDisable(GL_CULL_FACE);
+	glUseProgram(ShaderPost);
+	glBindVertexArray(VAOPost);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D,PostMap);
+	glUniform1i(glGetUniformLocation(ShaderPost,"PostMap"),0);
+	glUniform1i(glGetUniformLocation(ShaderPost,"Effect"),Effect);
+	glUniformMatrix4fv(glGetUniformLocation(ShaderPost,"mvp"),1,GL_FALSE,&mvp[0][0]);
+	glDrawArrays(GL_TRIANGLES,0,6);
+	//glEnable(GL_CULL_FACE);
 	
 	glFlush();
 	glutSwapBuffers();
@@ -337,9 +363,6 @@ void KeyDown(unsigned char key, int x, int y){
 		case 'd':
 			cam.gr=true;
 			break;
-		case 'z':
-			cam.toDefault();
-			break;
 		case '\033':
 			exit(0);
 		case '1':
@@ -365,6 +388,12 @@ void KeyDown(unsigned char key, int x, int y){
 			break;
 		case 'o':
 			light.z-=1;
+			break;
+		case 'z':
+			Effect=1;
+			break;
+		case 'x':
+			Effect=0;
 			break;
 	}
 }
