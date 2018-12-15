@@ -12,4 +12,5 @@ uniform int Effect;
 void main(){
 	color = texture(PostMap,Texture);
 	if (Effect==1) color = 1-color;
+	if (Effect==2) color = color * vec4(1,0.8,0.2,1);
 }

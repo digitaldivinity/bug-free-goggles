@@ -393,6 +393,9 @@ void KeyDown(unsigned char key, int x, int y){
 			Effect=1;
 			break;
 		case 'x':
+			Effect=2;
+			break;
+		case 'c':
 			Effect=0;
 			break;
 	}
