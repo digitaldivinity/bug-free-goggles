@@ -39,8 +39,49 @@ GLfloat flat_vertices[]={
 GLfloat bil_pos[]={
 	0,0,0,0,0,0,0,0
 };
-GLfloat stars[900];
+GLfloat SkyBoxVertices[] = {         
+    -1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
 
+    -1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+
+    -1.0f, -1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,
+
+    -1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,
+     1.0f,  1.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,
+    -1.0f,  1.0f, -1.0f,
+
+    -1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,
+    -1.0f, -1.0f,  1.0f,
+     1.0f, -1.0f,  1.0f
+};
 
 Model mdl1("models/lowPoly.obj");
 Model sphere("models/sphere.obj");
@@ -61,6 +102,8 @@ GLuint PostMap,PostFBO,COLOR_WIDTH=2048,COLOR_HEIGHT=2048,ShaderPost,VAOPost;
 GLuint ShaderBillboard,VAOBillboard;
 GLuint ShaderCook,VAO1Cook,VAO2Cook;
 GLuint buf;
+GLuint SkyBox,ShaderSkyBox;
+GLuint VBOSky,VAOSky;
 //GLuint mvpLoc;
 GLuint Effect=0;
 
@@ -84,22 +127,8 @@ BillboardList blst(TEX2,10,ShaderBillboard,VAOBillboard);
 bool init()
 {
 	std::srand(std::time(0));
-	//make stars
-	{
-		double a;
-		for (int i=0;i<900;i+=3){
-			stars[i]=rand()%500-250;
-			stars[i+1]=rand()%500-250;
-			stars[i+2]=rand()%500-250;
-			a=sqrt(pow(stars[i],2)+pow(stars[i+1],2)+pow(stars[i+2],2));
-			stars[i]=300*stars[i]/a;
-			stars[i+1]=300*stars[i+1]/a;
-			stars[i+2]=300*stars[i+2]/a;
-		}
-	}
-
 	glEnable(GL_DEPTH_TEST);
-
+	//shaders compile
 	ShaderMain=CreateShader("shaders/main.vert","shaders/main.frag");
 	ShaderLightSource=CreateShader("shaders/light.vert","shaders/light.frag");
 	ShaderDepth=CreateShader("shaders/depth.vert","shaders/depth.frag","shaders/depth.geom");
@@ -107,6 +136,18 @@ bool init()
 	ShaderPost=CreateShader("shaders/post.vert","shaders/post.frag");
 	ShaderBillboard=CreateShader("shaders/billboard.vert","shaders/billboard.frag","shaders/billboard.geom");
 	ShaderCook=CreateShader("shaders/cook.vert","shaders/cook.frag");
+	ShaderSkyBox=CreateShader("shaders/sky.vert","shaders/sky.frag");
+	//VAO for skybox
+	glGenVertexArrays(1,&VAOSky);
+	glBindVertexArray(VAOSky);
+	glGenBuffers(1,&VBOSky);
+	glBindBuffer(GL_ARRAY_BUFFER,VBOSky);
+	glBufferData(GL_ARRAY_BUFFER,36*3*sizeof(GLfloat),SkyBoxVertices,GL_STATIC_DRAW);
+	GLuint modelPos = glGetAttribLocation(ShaderSkyBox, "position");
+	glVertexAttribPointer(modelPos, 3, GL_FLOAT, GL_FALSE,3 * sizeof(GLfloat), 0);
+	glEnableVertexAttribArray(modelPos);
+	glBindVertexArray(0);
+	
 	//generating VAO
 	VAO1=mdl1.CreateArrays(ShaderMain);
 	VAO2=sphere.CreateArrays(ShaderMain);
@@ -117,15 +158,6 @@ bool init()
 	depthVAO2=sphere.CreateArrays(ShaderDepth);
 	VAOPost=Model::CreateExternalArrays(ShaderPost,flat_vertices,6);
 	VAOBillboard=Model::CreateExternalArrays(ShaderBillboard,bil_pos,1);
-	//starsVAO
-	glGenVertexArrays(1,&starsVAO);
-	glBindVertexArray(starsVAO);
-	glGenBuffers(1,&starsVBO);
-	glBindBuffer(GL_ARRAY_BUFFER,starsVBO);
-	glBufferData(GL_ARRAY_BUFFER,sizeof(stars),stars,GL_STATIC_DRAW);
-	glVertexAttribPointer(glGetAttribLocation(ShaderLightSource,"position"),
-		3, GL_FLOAT, GL_FALSE, 0 , 0);
-	glEnableVertexAttribArray(0);
 	//unbind VAO & VBO
 	glBindBuffer(GL_ARRAY_BUFFER,0);
 	glBindVertexArray(0);
@@ -176,6 +208,21 @@ bool init()
 	glDrawBuffer(GL_NONE);
 	glDrawBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
+	//кубическая карты для скайбокса
+	glGenTextures(1,&SkyBox);
+	glBindTexture(GL_TEXTURE_CUBE_MAP,SkyBox);
+	for (int i=0;i<6;i++){
+		char buf[]={"textures/SkyBox0.tga"};
+		buf[15]='0'+i;
+		Texture tex(buf);
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X+i,0,GL_RGB,tex.getWidth(),tex.getHeight(),0,GL_RGB,GL_UNSIGNED_BYTE,tex.get());
+	}
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 
+	glBindTexture(GL_TEXTURE_CUBE_MAP,0);
 	//буффер для постэффектов
 	GLuint depthPostMap;
 	glGenFramebuffers(1, &PostFBO);
@@ -272,8 +319,19 @@ void display(void)
 	GLuint mvpLoc,mvLoc,nmLoc;
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	view=cam.getView();
-	
 	mvp = proj * view;
+	glm::mat4x4 buf=mvp*glm::translate(glm::vec3(cam.x,cam.y,cam.z))*glm::scale(glm::vec3(100,100,100));
+	//skybox
+	glDisable(GL_DEPTH_TEST);
+	glUseProgram(ShaderSkyBox);
+	glBindVertexArray(VAOSky);
+	glUniformMatrix4fv(glGetUniformLocation(ShaderSkyBox,"mvp"),1,GL_FALSE,&buf[0][0]);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_CUBE_MAP,SkyBox);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP,SkyBox);
+	glUniform1i(glGetUniformLocation(ShaderSkyBox,"SkyBox"),0);
+	glDrawArrays(GL_TRIANGLES,0,36);
+	glEnable(GL_DEPTH_TEST);
 	
 	//первая
 	model = glm::rotate(glm::radians(yAngle), glm::vec3(0.0f, 1.0f, 0.0f)) *
@@ -293,15 +351,15 @@ void display(void)
 	glUniform3f(glGetUniformLocation(ShaderDepth,"LightPosition"),light.x,light.y,light.z);
 	glActiveTexture(GL_TEXTURE0);//
 	glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap);//
-	GLuint depthMapLoc=glGetUniformLocation(ShaderMain,"depthMap");
+	glUniform1i(glGetUniformLocation(ShaderMain,"depthMap"), 0);
 	glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, &mvp[0][0]);
 	glUniformMatrix4fv(mvLoc, 1, GL_FALSE, &mv[0][0]);
 	glUniformMatrix3fv(nmLoc, 1, GL_FALSE, &nm[0][0]);
 	glUniformMatrix4fv(mLoc,1,GL_FALSE,&model[0][0]);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderMain,"LightSpace"),1,GL_FALSE,&LightSpace[0][0]);
 	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
-	glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap); 
-	glUniform1i(glGetUniformLocation(ShaderMain,"depthMap"), 0);
+	//glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap); 
+	
 	glDrawArrays(GL_TRIANGLES,0,mdl1.getSize());
 	
 	//вторая
@@ -337,12 +395,6 @@ void display(void)
 	glBindVertexArray(VAOLightSource);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderLightSource,"mvp"),1,GL_FALSE,&mvp[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
-	//звезды
-	glBindVertexArray(starsVAO);
-	mvp=proj*view;
-	glUniformMatrix4fv(glGetUniformLocation(ShaderLightSource,"mvp"),1,GL_FALSE,&mvp[0][0]);
-	glPointSize(2);
-	glDrawArrays(GL_POINTS,0,300);
 	//billboards
 	glm::vec3 campos(cam.x,cam.y,cam.z);
 	blst.Draw(mvp,campos,light);
@@ -417,6 +469,9 @@ void KeyDown(unsigned char key, int x, int y){
 		case 'v':
 			if (STOPBILLBOARDS) STOPBILLBOARDS=false;
 			else STOPBILLBOARDS=true;
+			break;
+		case 'x':
+			cam.x=cam.y=cam.z=0;
 			break;
 		case 'r':
 			buf = ShaderCook;
