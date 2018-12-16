@@ -8,8 +8,6 @@ out vec3 Position;
 out vec2 Texture;
 out vec3 Normal;
 
-//shadow mapping
-uniform mat4 LightSpace;
 
 
 uniform mat4 mvp;
@@ -23,9 +21,4 @@ void main() {
 	Texture=texture;
 	Normal=nm*normal;
 	gl_Position = mvp * vec4(position,1);
-	
-	//shadow mapping
-	//vec4 FragPos = vec4(m * vec4(position,1));
-	//FragPosLightSpace=LightSpace*FragPos;
-	
 }

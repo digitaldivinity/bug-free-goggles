@@ -4,25 +4,17 @@ in vec2 Texture;
 in vec3 Normal;
 in vec3 Position;
 
-//in vec3 nLightDirection;
-//in vec3 nNormal;
-
 out vec4 color;
 
-//blinn-fong model
 uniform vec3 camPosition;
 uniform mat3 nm;
 uniform mat4 m;
 uniform vec3 LightPosition;
 uniform sampler2D normalMap;
 
-uniform sampler2D sampler;
-//shadow mapping
+uniform sampler2D sampler;//
 uniform samplerCube depthMap;
 uniform float farPlane=500;
-//uniform mat4 LightSpace;
-//in vec4 FragPosLightSpace;
-
 struct Material{
 	vec3 ambient;
 	vec3 diffuse;
@@ -100,5 +92,4 @@ void main()
 	vec3 precolor =  cosNL * (light.diffuse+ light.specular* Rs);
 
 	color = vec4(light.ambient + (1-shadow) * precolor, 1.0);
-	//color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
 }

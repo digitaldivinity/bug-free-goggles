@@ -25,12 +25,16 @@ class Billboard{
 	}
 	void Draw(GLuint Shader,glm::vec3 & Position){
 		glm:: vec3 buf=Position+shift;
+		GLfloat fade=1-(timepass/lifetime);
+		glUniform1f(glGetUniformLocation(Shader,"Fade"),fade);
 		glUniform3f(glGetUniformLocation(Shader,"shift"),buf.x,buf.y,buf.z);
 		glDrawArrays(GL_POINTS,0,1);
 	}
 	void Update(){
 		if (STOPBILLBOARDS) return;
-		int buf=rand()%30;
+		int buf=rand()%5;
+		if (buf<3) return;
+		buf=rand()%30;
 		if (buf!=0) timepass+=1/buf;
 		if (timepass>lifetime) rewind();
 		buf=rand()%3-1;

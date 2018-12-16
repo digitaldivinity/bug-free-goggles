@@ -2,7 +2,7 @@
 #include <GL/freeglut.h>
 #include <glm/glm.hpp>
 
-//эксперементальное расширение glm, возможность засылать в транслейты vec
+//эксперементальное расширение glm 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
@@ -79,7 +79,7 @@ glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
 
-BillboardList blst(TEX2,50,ShaderBillboard,VAOBillboard);
+BillboardList blst(TEX2,10,ShaderBillboard,VAOBillboard);
 
 bool init()
 {
@@ -178,23 +178,22 @@ bool init()
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	//буффер для постэффектов
 	GLuint depthPostMap;
-    glGenFramebuffers(1, &PostFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, PostFBO);
-    // create a color attachment texture
-    glGenTextures(1, &PostMap);
-    glBindTexture(GL_TEXTURE_2D, PostMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, COLOR_WIDTH, COLOR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, PostMap, 0);
-    unsigned int rbo;
-    glGenRenderbuffers(1, &rbo);
-    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, COLOR_WIDTH, COLOR_HEIGHT);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
-    glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_MULTISAMPLE); 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glGenFramebuffers(1, &PostFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, PostFBO);
+	// create a color attachment texture
+	glGenTextures(1, &PostMap);
+	glBindTexture(GL_TEXTURE_2D, PostMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, COLOR_WIDTH, COLOR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, PostMap, 0);
+	unsigned int rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, COLOR_WIDTH, COLOR_HEIGHT);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+	glEnable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void reshape(int w, int h)
@@ -223,7 +222,6 @@ glm::mat4x4 shadowTransforms[6];//vp
 void display(void)
 {
 	//рендер карты глубины
-	//glEnable(GL_CULL_FACE);
 	glCullFace(GL_FRONT);
 	glViewport(0,0,SHADOW_WIDTH,SHADOW_HEIGHT);
 	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
@@ -264,12 +262,10 @@ void display(void)
 		glm::scale(glm::vec3(3,3,3));
 	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
-	//glBindFramebuffer(GL_FRAMEBUFFER,0);//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 	glCullFace(GL_BACK);
 	
 	//рендер сцены
-	//glViewport(0,0,Width,Height);
-	glViewport(0,0,COLOR_WIDTH,COLOR_HEIGHT);//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+	glViewport(0,0,COLOR_WIDTH,COLOR_HEIGHT);
 	glBindFramebuffer(GL_FRAMEBUFFER,PostFBO);
 	proj=glm::perspective(glm::radians(45.0f),(float)Width/Height,1.0f,500.0f);
 	
@@ -332,9 +328,6 @@ void display(void)
 	glActiveTexture(GL_TEXTURE1);//
 	glBindTexture(GL_TEXTURE_2D,TEX1);// 
 	glUniform1i(glGetUniformLocation(ShaderMain,"normalMap"), 1);
-	//glActiveTexture(GL_TEXTURE2);
-	//glBindTexture(GL_TEXTURE_2D,TEX3);
-	//glUniform1i(glGetUniformLocation(ShaderMain,"sampler"),2);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	
 	//сфера в центре
@@ -357,7 +350,6 @@ void display(void)
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glViewport(0,0,Width,Height);
-	//glDisable(GL_CULL_FACE);
 	glUseProgram(ShaderPost);
 	glBindVertexArray(VAOPost);
 	glActiveTexture(GL_TEXTURE0);
@@ -366,7 +358,6 @@ void display(void)
 	glUniform1i(glGetUniformLocation(ShaderPost,"Effect"),Effect);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderPost,"mvp"),1,GL_FALSE,&mvp[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,6);
-	//glEnable(GL_CULL_FACE);
 	glBindVertexArray(0);
 	glFlush();
 	glutSwapBuffers();
@@ -420,13 +411,8 @@ void KeyDown(unsigned char key, int x, int y){
 			light.z-=1;
 			break;
 		case 'z':
-			Effect=1;
-			break;
-		case 'x':
-			Effect=2;
-			break;
-		case 'c':
-			Effect=0;
+			Effect++;
+			if (Effect>5) Effect=0;
 			break;
 		case 'v':
 			if (STOPBILLBOARDS) STOPBILLBOARDS=false;
@@ -495,7 +481,6 @@ int main(int argc, char **argv)
 	glutKeyboardUpFunc(KeyUp);
 	glutMouseFunc(MouseButton);
 	glutMotionFunc(MouseMove);
-	//idle?
 	glutTimerFunc(20,idle,0);
 	FPS.Start();
 	glutMainLoop();
