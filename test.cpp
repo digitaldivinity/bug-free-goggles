@@ -50,7 +50,7 @@ GLuint Width=512,Height=512;
 GLuint VBO1,VBO2,VAOLightSource,FlatVBO;
 GLuint VAO1,VAO2,TestVAO;
 GLuint ShaderMain,ShaderLightSource,ShaderDepth,ShaderTest;
-GLuint TEX1,TEX2;
+GLuint TEX1,TEX2,TEX3;
 GLuint starsVAO,starsVBO;
 GLuint depthMapFBO;
 GLuint depthMap;
@@ -58,6 +58,8 @@ GLuint depthVAO,depthVAO2;
 GLuint SHADOW_WIDTH=1024,SHADOW_HEIGHT=1024;
 GLuint PostMap,PostFBO,COLOR_WIDTH=2048,COLOR_HEIGHT=2048,ShaderPost,VAOPost;
 GLuint ShaderBillboard,VAOBillboard;
+GLuint ShaderCook,VAO1Cook,VAO2Cook;
+GLuint buf;
 //GLuint mvpLoc;
 GLuint Effect=0;
 bool STOPBILLBOARDS=false;
@@ -96,13 +98,11 @@ class Billboard{
 		if (buf!=0) timepass+=1/buf;
 		if (timepass>lifetime) rewind();
 		buf=rand()%3-1;
-		if (buf!=0) shift.x+=1/buf;
+		if (buf!=0) shift.x+=1.0/(10*buf);
 		buf=rand()%3-1;
-		if (buf!=0) shift.y+=1/buf;
+		if (buf!=0) shift.y+=1.0/(10*buf);
 		buf=rand()%3-1;
-		if (buf!=0) shift.z+=1/buf;
-		
-		printf("%d\n",buf);
+		if (buf!=0) shift.z+=1.0/(10*buf);
 	}
 	void rewind(){
 		timepass=0;
@@ -184,10 +184,12 @@ bool init()
 	ShaderTest=CreateShader("shaders/test.vert","shaders/test.frag");
 	ShaderPost=CreateShader("shaders/post.vert","shaders/post.frag");
 	ShaderBillboard=CreateShader("shaders/billboard.vert","shaders/billboard.frag","shaders/billboard.geom");
-	
+	ShaderCook=CreateShader("shaders/cook.vert","shaders/cook.frag");
 	//generating VAO
 	VAO1=mdl1.CreateArrays(ShaderMain);
 	VAO2=sphere.CreateArrays(ShaderMain);
+	VAO1Cook=mdl1.CreateArrays(ShaderCook);
+	VAO2Cook=sphere.CreateArrays(ShaderCook);
 	VAOLightSource=sphere.CreateArrays(ShaderLightSource);
 	depthVAO=mdl1.CreateArrays(ShaderDepth);
 	depthVAO2=sphere.CreateArrays(ShaderDepth);
@@ -220,7 +222,13 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex2.getWidth(),tex2.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex2.get());
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	printf("ok\n");
+	Texture tex3("textures/melon.bmp",GL_RGB);
+	glGenTextures(1, &TEX3);
+	glBindTexture(GL_TEXTURE_2D, TEX3);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex3.getWidth(),tex3.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex3.get());
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//will be uncommet
@@ -266,8 +274,6 @@ bool init()
     //glEnable(GL_MULTISAMPLE); 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
-
-
 
 void reshape(int w, int h)
 {
@@ -404,6 +410,9 @@ void display(void)
 	glActiveTexture(GL_TEXTURE1);//
 	glBindTexture(GL_TEXTURE_2D,TEX1);// 
 	glUniform1i(glGetUniformLocation(ShaderMain,"normalMap"), 1);
+	//glActiveTexture(GL_TEXTURE2);
+	//glBindTexture(GL_TEXTURE_2D,TEX3);
+	//glUniform1i(glGetUniformLocation(ShaderMain,"sampler"),2);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	
 	//сфера в центре
@@ -501,6 +510,17 @@ void KeyDown(unsigned char key, int x, int y){
 			if (STOPBILLBOARDS) STOPBILLBOARDS=false;
 			else STOPBILLBOARDS=true;
 			break;
+		case 'r':
+			buf = ShaderCook;
+			ShaderCook=ShaderMain;
+			ShaderMain=buf;
+			buf = VAO1Cook;
+			VAO1Cook=VAO1;
+			VAO1=buf;
+			buf = VAO2Cook;
+			VAO2Cook=VAO2;
+			VAO2=buf;
+			break;
 	}
 }
 void KeyUp(unsigned char key, int x, int y){
@@ -541,7 +561,7 @@ int main(int argc, char **argv)
 	glutInitDisplayMode(GLUT_RGB|GLUT_DEPTH|GLUT_DOUBLE|GLUT_MULTISAMPLE);
 	glutInitWindowPosition(100,100);
 	glutInitWindowSize(500,500);
-	glutCreateWindow("Animated cube");
+	glutCreateWindow("Compgraph");
 
 	glewInit();
 

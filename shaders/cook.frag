@@ -35,7 +35,7 @@ struct Light{
 	vec3 diffuse;
 	vec3 specular;
 };
-uniform Light light={vec3(1,1,1),vec3(0.7,0.7,0.7),vec3(1,1,1)};
+uniform Light light={vec3(0.1,0.1,0.1),vec3(0.7,0.7,0.7),vec3(1,1,1)};
 
 vec3 sampleOffsetDirections[20] = vec3[]
 (
@@ -77,14 +77,28 @@ void main()
 	//
 	vec3 p = Position;
 	vec3 l=normalize(LightPosition-p);
-
 	vec3 v=normalize(camPosition-p);
-	vec3 r= reflect(-v,n);
-	float DiffStr=max(dot(n,l),0);
-	float SpecStr=pow(max(dot(l,r),0),material.shininess);
-	vec3 ambient=light.ambient*material.ambient;
-	vec3 diffuse=light.diffuse*(DiffStr*material.diffuse);
-	vec3 specular = light.specular*(SpecStr*material.specular);
-	float shadow = ShadowCalculation(Position);
-	color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
+	vec3 h=normalize(l+v);
+
+	float cosNL = max(dot(n, l), 0.0);
+	float cosNV = max(dot(n, v), 0.0);
+	float cosNH = max(dot(n, h), 1.0e-7);
+	float cosVH = max(dot(v, h), 0.0);
+
+	float geometric = 2.0 * cosNH/ cosVH;
+	geometric = min(1.0, geometric * min(cosNV, cosNL));
+
+	float roughnessVal=0.15;
+	float roughness2 = roughnessVal * roughnessVal;
+	float cosNH2 = cosNH * cosNH;
+	float cosNH2r = 1.0 / (cosNH2 * roughness2);
+	float roughnessE = (cosNH2 - 1.0) * cosNH2r;
+	float roughness = exp(roughnessE) * cosNH2r / (4.0 * cosNH2);
+	float fresnel = 1.0 / (1.0 + cosNV);
+	float Rs = min(1.0, (fresnel * geometric * roughness) / (cosNV * cosNL + 1.0e-7));
+	float shadow = ShadowCalculation(p);
+	vec3 precolor =  cosNL * (light.diffuse+ light.specular* Rs);
+
+	color = vec4(light.ambient + (1-shadow) * precolor, 1.0);
+	//color = vec4(ambient+(1-shadow)*(diffuse+specular),1);
 }
