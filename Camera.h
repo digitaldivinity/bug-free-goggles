@@ -19,7 +19,6 @@ struct Camera{
 		this->sensitivity=sensitivity;
 	}
 	void changeAngle(float phi,float psi){
-		//нуждается в доработке, oxz может увеличиться слишком сильно
 		oxz+=phi*sensitivity;
 		oyz-=psi*sensitivity;
 		if (oxz>=360) oxz-=360;

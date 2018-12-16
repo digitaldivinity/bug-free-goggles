@@ -148,8 +148,6 @@ class Model{
 		return VAO;
 	}
 	static GLuint CreateExternalArrays(GLuint shader,GLfloat * vertices,GLfloat size){
-		//здесь возможно дублирование вбо
-		//если нужно можно сделать возврат его через параметр + умолчание
 		GLuint VAO,VBO;
 		glGenVertexArrays(1,&VAO);
 		glBindVertexArray(VAO);
