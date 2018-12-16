@@ -24,6 +24,7 @@
 #include "Texture.h"
 #include "Model.h"
 #include "FPScounter.h"
+#include "Billboard.h"
 using namespace std;
 
 GLfloat flat_vertices[]={
@@ -62,7 +63,7 @@ GLuint ShaderCook,VAO1Cook,VAO2Cook;
 GLuint buf;
 //GLuint mvpLoc;
 GLuint Effect=0;
-bool STOPBILLBOARDS=false;
+
 float xAngle = 0;
 float yAngle = 0;
 
@@ -78,86 +79,7 @@ glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
 
-class Billboard{
-	glm::vec3 shift;
-	GLfloat lifetime;
-	GLfloat timepass;
-	public:
-	Billboard(){
-		lifetime=10;
-		timepass=0;
-		shift=glm::vec3(0);
-	}
-	void Draw(GLuint Shader){
-		glUniform3f(glGetUniformLocation(Shader,"shift"),shift.x,shift.y,shift.z);
-		glDrawArrays(GL_POINTS,0,1);
-	}
-	void Update(){
-		if (STOPBILLBOARDS) return;
-		int buf=rand()%30;
-		if (buf!=0) timepass+=1/buf;
-		if (timepass>lifetime) rewind();
-		buf=rand()%3-1;
-		if (buf!=0) shift.x+=1.0/(10*buf);
-		buf=rand()%3-1;
-		if (buf!=0) shift.y+=1.0/(10*buf);
-		buf=rand()%3-1;
-		if (buf!=0) shift.z+=1.0/(10*buf);
-	}
-	void rewind(){
-		timepass=0;
-		shift=glm::vec3(0);
-	}
-	void normalize(){
-		float buf=sqrt(shift.x*shift.x+shift.y*shift.y+shift.z*shift.z)/2;
-		shift/=buf;
-	}
-	glm::vec3 RetPosition(){
-		return shift;
-	}
-};
-
-class BillboardList{
-	std::vector<Billboard> lst;
-	public:
-	BillboardList(GLuint & Tex,const int Amount,GLuint & Shader,GLuint & VAO):
-	mShader(Shader),mVAO(VAO),mTexture(Tex)
-	{
-		
-		for (int i =0 ;i<Amount;i++) lst.push_back(Billboard());
-
-	}
-	void Draw(glm::mat4x4 & mvp,  glm::vec3 & CamPosition)
-	{
-		
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glUseProgram(mShader);
-		glBindVertexArray(mVAO);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D,mTexture);
-		glUniform1i(glGetUniformLocation(mShader,"ColorMap"),0);
-		glUniformMatrix4fv(glGetUniformLocation(mShader,"mvp"),1,GL_FALSE,&mvp[0][0]);
-		glUniform3f(glGetUniformLocation(mShader,"CamPosition"),CamPosition.x,CamPosition.y,CamPosition.z);
-		for (int i=0;i<lst.size();i++) lst[i].Update();
-		std::map<float, Billboard> sorted;
-		for (int i = 0; i < lst.size(); i++)
-		{
-			float distance = glm::length(CamPosition - lst[i].RetPosition());
-			sorted[distance] = lst[i];//sorted.insert(std::pair<float,glm::vec3>(distance,lst[i]);
-		}
-		for (auto it=sorted.rbegin();it!=sorted.rend();it++) it->second.Draw(mShader);
-		glBindVertexArray(0);
-		glDisable(GL_BLEND);
-	}
-	private:
-	GLuint & mTexture;
-	GLuint & mVAO;
-	GLuint & mShader;
-	//glm::vec3 mStartPosition;
-};
-
-BillboardList blst(TEX2,20,ShaderBillboard,VAOBillboard);
+BillboardList blst(TEX2,50,ShaderBillboard,VAOBillboard);
 
 bool init()
 {
@@ -216,7 +138,7 @@ bool init()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	Texture tex2("textures/window.png",GL_RGBA);
+	Texture tex2("textures/fire.png",GL_RGBA);
 	glGenTextures(1, &TEX2);
 	glBindTexture(GL_TEXTURE_2D, TEX2);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex2.getWidth(),tex2.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex2.get());
@@ -430,7 +352,7 @@ void display(void)
 	glDrawArrays(GL_POINTS,0,300);
 	//billboards
 	glm::vec3 campos(cam.x,cam.y,cam.z);
-	blst.Draw(mvp,campos);
+	blst.Draw(mvp,campos,light);
 	//рендер из текстуры на экран
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
