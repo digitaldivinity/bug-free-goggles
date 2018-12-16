@@ -6,6 +6,10 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
 
+#include <iterator>
+#include <map>
+#include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -31,10 +35,13 @@ GLfloat flat_vertices[]={
 	1,-1,0,0,1,0,1,0,
 	1,1,0,0,1,0,1,1
 };
+GLfloat bil_pos[]={
+	0,0,0,0,0,0,0,0
+};
 GLfloat stars[900];
 
 
-Model sortir("models/lowPoly.obj");
+Model mdl1("models/lowPoly.obj");
 Model sphere("models/sphere.obj");
 
 Camera cam(0.1,0.5);
@@ -43,16 +50,17 @@ GLuint Width=512,Height=512;
 GLuint VBO1,VBO2,VAOLightSource,FlatVBO;
 GLuint VAO1,VAO2,TestVAO;
 GLuint ShaderMain,ShaderLightSource,ShaderDepth,ShaderTest;
-GLuint TEX1;
+GLuint TEX1,TEX2;
 GLuint starsVAO,starsVBO;
 GLuint depthMapFBO;
 GLuint depthMap;
 GLuint depthVAO,depthVAO2;
 GLuint SHADOW_WIDTH=1024,SHADOW_HEIGHT=1024;
 GLuint PostMap,PostFBO,COLOR_WIDTH=2048,COLOR_HEIGHT=2048,ShaderPost,VAOPost;
+GLuint ShaderBillboard,VAOBillboard;
 //GLuint mvpLoc;
 GLuint Effect=0;
-
+bool STOPBILLBOARDS=false;
 float xAngle = 0;
 float yAngle = 0;
 
@@ -68,9 +76,92 @@ glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
 
+class Billboard{
+	glm::vec3 shift;
+	GLfloat lifetime;
+	GLfloat timepass;
+	public:
+	Billboard(){
+		lifetime=10;
+		timepass=0;
+		shift=glm::vec3(0);
+	}
+	void Draw(GLuint Shader){
+		glUniform3f(glGetUniformLocation(Shader,"shift"),shift.x,shift.y,shift.z);
+		glDrawArrays(GL_POINTS,0,1);
+	}
+	void Update(){
+		if (STOPBILLBOARDS) return;
+		int buf=rand()%30;
+		if (buf!=0) timepass+=1/buf;
+		if (timepass>lifetime) rewind();
+		buf=rand()%3-1;
+		if (buf!=0) shift.x+=1/buf;
+		buf=rand()%3-1;
+		if (buf!=0) shift.y+=1/buf;
+		buf=rand()%3-1;
+		if (buf!=0) shift.z+=1/buf;
+		
+		printf("%d\n",buf);
+	}
+	void rewind(){
+		timepass=0;
+		shift=glm::vec3(0);
+	}
+	void normalize(){
+		float buf=sqrt(shift.x*shift.x+shift.y*shift.y+shift.z*shift.z)/2;
+		shift/=buf;
+	}
+	glm::vec3 RetPosition(){
+		return shift;
+	}
+};
+
+class BillboardList{
+	std::vector<Billboard> lst;
+	public:
+	BillboardList(GLuint & Tex,const int Amount,GLuint & Shader,GLuint & VAO):
+	mShader(Shader),mVAO(VAO),mTexture(Tex)
+	{
+		
+		for (int i =0 ;i<Amount;i++) lst.push_back(Billboard());
+
+	}
+	void Draw(glm::mat4x4 & mvp,  glm::vec3 & CamPosition)
+	{
+		
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glUseProgram(mShader);
+		glBindVertexArray(mVAO);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D,mTexture);
+		glUniform1i(glGetUniformLocation(mShader,"ColorMap"),0);
+		glUniformMatrix4fv(glGetUniformLocation(mShader,"mvp"),1,GL_FALSE,&mvp[0][0]);
+		glUniform3f(glGetUniformLocation(mShader,"CamPosition"),CamPosition.x,CamPosition.y,CamPosition.z);
+		for (int i=0;i<lst.size();i++) lst[i].Update();
+		std::map<float, Billboard> sorted;
+		for (int i = 0; i < lst.size(); i++)
+		{
+			float distance = glm::length(CamPosition - lst[i].RetPosition());
+			sorted[distance] = lst[i];//sorted.insert(std::pair<float,glm::vec3>(distance,lst[i]);
+		}
+		for (auto it=sorted.rbegin();it!=sorted.rend();it++) it->second.Draw(mShader);
+		glBindVertexArray(0);
+		glDisable(GL_BLEND);
+	}
+	private:
+	GLuint & mTexture;
+	GLuint & mVAO;
+	GLuint & mShader;
+	//glm::vec3 mStartPosition;
+};
+
+BillboardList blst(TEX2,20,ShaderBillboard,VAOBillboard);
+
 bool init()
 {
-	
+	std::srand(std::time(0));
 	//make stars
 	{
 		double a;
@@ -92,15 +183,16 @@ bool init()
 	ShaderDepth=CreateShader("shaders/depth.vert","shaders/depth.frag","shaders/depth.geom");
 	ShaderTest=CreateShader("shaders/test.vert","shaders/test.frag");
 	ShaderPost=CreateShader("shaders/post.vert","shaders/post.frag");
+	ShaderBillboard=CreateShader("shaders/billboard.vert","shaders/billboard.frag","shaders/billboard.geom");
 	
 	//generating VAO
-	VAO1=sortir.CreateArrays(ShaderMain);
+	VAO1=mdl1.CreateArrays(ShaderMain);
 	VAO2=sphere.CreateArrays(ShaderMain);
 	VAOLightSource=sphere.CreateArrays(ShaderLightSource);
-	depthVAO=sortir.CreateArrays(ShaderDepth);
+	depthVAO=mdl1.CreateArrays(ShaderDepth);
 	depthVAO2=sphere.CreateArrays(ShaderDepth);
 	VAOPost=Model::CreateExternalArrays(ShaderPost,flat_vertices,6);
-	
+	VAOBillboard=Model::CreateExternalArrays(ShaderBillboard,bil_pos,1);
 	//starsVAO
 	glGenVertexArrays(1,&starsVAO);
 	glBindVertexArray(starsVAO);
@@ -115,14 +207,20 @@ bool init()
 	glBindVertexArray(0);
 
 	//GEN textures
-	Texture tex1("textures/nm_brick.jpg");
+	
+	Texture tex1("textures/nm_brick.jpg",GL_RGB);
 	glGenTextures(1, &TEX1);
 	glBindTexture(GL_TEXTURE_2D, TEX1);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex1.getWidth(),tex1.getHeight(), 0, GL_RGB, GL_UNSIGNED_BYTE, tex1.get());
 	glGenerateMipmap(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	
-
+	Texture tex2("textures/window.png",GL_RGBA);
+	glGenTextures(1, &TEX2);
+	glBindTexture(GL_TEXTURE_2D, TEX2);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tex2.getWidth(),tex2.getHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tex2.get());
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	printf("ok\n");
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//will be uncommet
@@ -139,9 +237,9 @@ bool init()
 	}
 	glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE); 
 	
 	glBindFramebuffer(GL_FRAMEBUFFER,depthMapFBO);
 	glFramebufferTexture(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,depthMap,0);
@@ -192,9 +290,6 @@ void idle(int value) {
 	glutTimerFunc(20,idle,0);
 }
 
-void RenderMainObjects(){
-	
-}
 
 glm::mat4x4 shadowTransforms[6];//vp
 void display(void)
@@ -229,11 +324,16 @@ void display(void)
 	glUniform1f(glGetUniformLocation(ShaderDepth,"far_plane"),far);
 	glUniform3f(glGetUniformLocation(ShaderDepth,"LightPosition"),light.x,light.y,light.z);
 	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
-	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
+	glDrawArrays(GL_TRIANGLES,0,mdl1.getSize());
 	model = glm::rotate(glm::radians(-yAngle), glm::vec3(0.0f, 1.0f, 0.0f)) *
 		glm::translate(glm::vec3(0.0f,0.0f,-20.0f))*
 		glm::scale(glm::vec3(2,2,2));
 	glBindVertexArray(depthVAO2);
+	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
+	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
+	model = glm::rotate(glm::radians(yAngle/2), glm::vec3(0.0f, 1.0f, 0.0f)) *
+		glm::translate(glm::vec3(0.0f,0.0f,-40.0f))*
+		glm::scale(glm::vec3(3,3,3));
 	glUniformMatrix4fv(glGetUniformLocation(ShaderDepth,"model"),1,GL_FALSE,&model[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	//glBindFramebuffer(GL_FRAMEBUFFER,0);//<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -278,7 +378,7 @@ void display(void)
 	glUniform3f(camposLoc,cam.x,cam.y,cam.z);
 	glBindTexture(GL_TEXTURE_CUBE_MAP,depthMap); 
 	glUniform1i(glGetUniformLocation(ShaderMain,"depthMap"), 0);
-	glDrawArrays(GL_TRIANGLES,0,sortir.getSize());
+	glDrawArrays(GL_TRIANGLES,0,mdl1.getSize());
 	
 	//вторая
 	glBindVertexArray(VAO2);
@@ -306,7 +406,6 @@ void display(void)
 	glUniform1i(glGetUniformLocation(ShaderMain,"normalMap"), 1);
 	glDrawArrays(GL_TRIANGLES,0,sphere.getSize());
 	
-	
 	//сфера в центре
 	model=glm::translate(light);
 	mvp=proj*view*model;
@@ -320,8 +419,9 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(ShaderLightSource,"mvp"),1,GL_FALSE,&mvp[0][0]);
 	glPointSize(2);
 	glDrawArrays(GL_POINTS,0,300);
-	
-	
+	//billboards
+	glm::vec3 campos(cam.x,cam.y,cam.z);
+	blst.Draw(mvp,campos);
 	//рендер из текстуры на экран
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -336,10 +436,9 @@ void display(void)
 	glUniformMatrix4fv(glGetUniformLocation(ShaderPost,"mvp"),1,GL_FALSE,&mvp[0][0]);
 	glDrawArrays(GL_TRIANGLES,0,6);
 	//glEnable(GL_CULL_FACE);
-	
+	glBindVertexArray(0);
 	glFlush();
 	glutSwapBuffers();
-
 	//вычисление fps
 	FPS.Calculate();
 }
@@ -397,6 +496,10 @@ void KeyDown(unsigned char key, int x, int y){
 			break;
 		case 'c':
 			Effect=0;
+			break;
+		case 'v':
+			if (STOPBILLBOARDS) STOPBILLBOARDS=false;
+			else STOPBILLBOARDS=true;
 			break;
 	}
 }

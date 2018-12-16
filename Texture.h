@@ -10,8 +10,10 @@ class Texture{
 	int channels;
 	unsigned char * ptr;
 	public:
-	Texture(const char * path){
-		
+	Texture(const char * path,GLuint format){
+		if (format==GL_RGBA)
+		ptr=SOIL_load_image(path, &Width, &Height, &channels, SOIL_LOAD_RGBA);
+		else if (format==GL_RGB)
 		ptr=SOIL_load_image(path, &Width, &Height, &channels, SOIL_LOAD_RGB);
 	}
 	~Texture(){

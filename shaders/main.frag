@@ -34,7 +34,7 @@ struct Light{
 	vec3 diffuse;
 	vec3 specular;
 };
-uniform Light light={vec3(1,1,1),vec3(1,1,1),vec3(1,1,1)};
+uniform Light light={vec3(1,1,1),vec3(0.7,0.7,0.3),vec3(1,1,1)};
 
 vec3 sampleOffsetDirections[20] = vec3[]
 (
