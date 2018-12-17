@@ -69,7 +69,7 @@ class BillboardList{
 	}
 	void Draw(glm::mat4x4 & mvp,  glm::vec3 & CamPosition, glm::vec3 & Position)
 	{
-		
+		glDepthMask(GL_FALSE);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(mShader);
@@ -89,6 +89,7 @@ class BillboardList{
 		for (auto it=sorted.rbegin();it!=sorted.rend();it++) it->second.Draw(mShader,Position);
 		glBindVertexArray(0);
 		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
 	}
 	private:
 	GLuint & mTexture;

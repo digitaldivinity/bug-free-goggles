@@ -122,7 +122,7 @@ glm::mat4x4 mvp;
 glm::mat4x4 mv;
 glm::mat3x3 nm;
 
-BillboardList blst(TEX2,10,ShaderBillboard,VAOBillboard);
+BillboardList blst(TEX2,30,ShaderBillboard,VAOBillboard);
 
 bool init()
 {
